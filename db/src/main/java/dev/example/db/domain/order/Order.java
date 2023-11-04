@@ -1,0 +1,60 @@
+package dev.example.db.domain.order;
+
+import dev.example.db.domain.BaseEntity;
+import dev.example.db.domain.orderproduct.OrderProduct;
+import dev.example.db.domain.product.Product;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "orders")
+@Entity
+public class Order extends BaseEntity {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "order_id")
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus orderStatus;
+
+    private int totalPrice;
+
+    private LocalDateTime registeredDateTime;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private List<OrderProduct> orderProducts = new ArrayList<>();
+
+    public Order(OrderStatus orderStatus, int totalPrice, LocalDateTime registeredDateTime, List<OrderProduct> orderProducts) {
+        this.orderStatus = orderStatus;
+        this.totalPrice = totalPrice;
+        this.registeredDateTime = registeredDateTime;
+        this.orderProducts = orderProducts;
+    }
+
+    public Order(List<Product> products, LocalDateTime registeredDateTime) {
+        this.orderStatus = OrderStatus.INIT;
+        this.totalPrice = calculateTotal(products);
+        this.registeredDateTime = registeredDateTime;
+        this.orderProducts = products.stream()
+                .map(product -> new OrderProduct(this, product))
+                .collect(Collectors.toList());
+    }
+    public static Order create(List<Product> products, LocalDateTime registeredDateTime) {
+        return new Order(products, registeredDateTime);
+    }
+
+    private static int calculateTotal(List<Product> products) {
+        return products.stream()
+                .mapToInt(Product::getPrice)
+                .sum();
+    }
+}
